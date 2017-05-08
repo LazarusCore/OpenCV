@@ -4,7 +4,7 @@
 #include <iostream>
 #include <math.h>
 
-
+//Benson Maxwell: 01504282
 
 //Namespaces
 
@@ -29,8 +29,8 @@ int GxMask[3][3] = { {-1,0,1}, {-2,0,2}, {-1,0,-1} };			// Sobel mask in the x d
 int GyMask[3][3] = { {1,2,1}, {0,0,0}, {-1,-2,-1} };			// Sobel mask in the y direction
 int edgeDirection[3072][1728];									// Stores the edge direction of each pixel
 double pixGradient[3072][1728];									// Stores the gradient strength of each pixel
-Mat impro_image;												// Mat file for Sobel Operator
-Mat gray_image;													// Mat file for Gray scale Operator
+Mat impro_image(3072,1728,CV_8UC1);												// Mat file for Sobel Operator
+Mat grey_image;													// Mat file for Gray scale Operator
 Mat blur_image;													// Gaussian Blur result
 float thresLow = 0.4;											// Lower Threshold
 float thresHigh = 0.7;											// Upper Threshold
@@ -39,25 +39,22 @@ float thresHigh = 0.7;											// Upper Threshold
 
 int main(int argc, char* args[]) {
 
-
-
-
 	Mat	src_image = imread(FILE_NAME, CV_LOAD_IMAGE_COLOR);		// Loads the image1.jpg into the variable src_image
 	imageX = src_image.size().width;
 	imageY = src_image.size().height;
 
 
-	cvtColor(src_image, gray_image, CV_BGR2GRAY);				// Creates a dupilcate of the image and converts to gray scale
+	cvtColor(src_image, grey_image, CV_BGR2GRAY);				// Creates a dupilcate of the image and converts to gray scale
 
-	imwrite("../../BMaxwellOpenCV/Gray_Image.jpg", gray_image);
+	imwrite("../../BMaxwellOpenCV/Grey_Image.jpg", grey_image);
 	
 	namedWindow("Image", CV_WINDOW_NORMAL);						// Opens images for comparison
-	namedWindow("Gray Image", CV_WINDOW_NORMAL);
+	namedWindow("Grey Image", CV_WINDOW_NORMAL);
 
 	imshow("Image", src_image);
-	imshow("Gray Image", gray_image);
+	imshow("Grey Image", grey_image);
 
-	edgeDet(gray_image, imageX, imageY, sigma); //Runs the Edge Detection algorithm
+	edgeDet(grey_image, imageX, imageY, sigma); //Runs the Edge Detection algorithm
 
 	waitKey(0);
 	
@@ -67,8 +64,6 @@ int main(int argc, char* args[]) {
 }
 
 void edgeDet(Mat input, double width, double height, float sigma){
-
-
 
 	Mat kernel = (Mat_<double>(5, 5) << 1, 4, 6, 4, 1, 4, 16, 24, 16, 4, 6, 24, 36, 24, 6, 4, 16, 24, 16, 4, 1, 4, 6, 4, 1);	//Gaussian Kernel
 	kernel = kernel / 256;										//Normalised
@@ -81,9 +76,9 @@ void edgeDet(Mat input, double width, double height, float sigma){
 	
 	imagePro(width, height);	//Sobel Function
 
-	imwrite("../../BMaxwellOpenCV/Sobel_Image.jpg", impro_image);
-	namedWindow("Canny Image", CV_WINDOW_NORMAL);
-	imshow("Canny Image", impro_image);
+	//imwrite("../../BMaxwellOpenCV/impro_Image.jpg", impro_image);
+	//namedWindow("Canny Image", CV_WINDOW_NORMAL);
+	//imshow("Canny Image", impro_image);
 
 	return ;
 
@@ -108,6 +103,7 @@ void imagePro(double width, double height){
 			edgeDirection[row][col] = 0;
 		}
 	}
+
 	// Determine edge directions and gradient strengths
 	for (row = 1; row < height - 1; row++) {
 		for (col = 1; col < width - 1; col++) {
@@ -117,13 +113,13 @@ void imagePro(double width, double height){
 			for (yOffset = -1; yOffset <= 1; yOffset++) {
 				for (xOffset = -1; xOffset <= 1; xOffset++) {
 					yTotal = row + yOffset;
-					xTotal = col + xOffset;
-					gradX = gradX + ((int)blur_image.at<uchar>(xTotal, yTotal) * GxMask[yOffset + 1][xOffset + 1]);
-					gradY = gradY + ((int)blur_image.at<uchar>(xTotal, yTotal) * GyMask[yOffset + 1][xOffset + 1]);
+					xTotal = col; +xOffset;
+					gradX = gradX + ((int)blur_image.at<uchar>(yTotal, xTotal) * GxMask[yOffset + 1][xOffset + 1]);
+					gradY = gradY + ((int)blur_image.at<uchar>(yTotal, xTotal) * GyMask[yOffset + 1][xOffset + 1]);
 				}
 			}
 
-			pixGradient[row][col] = sqrt(pow(gradX, 2.0) + pow(gradY, 2.0));	// Calculate gradient strength			
+			pixGradient[row][col] = sqrt(pow(gradX, 2.0) + pow(gradY, 2.0));	// Calculate gradient strength
 			origAngle = (atan2(gradX, gradY) / 3.14159) * 180.0;				// Calculate actual direction of edge
 
 			//Convert actual edge direction to approximate value
@@ -139,7 +135,7 @@ void imagePro(double width, double height){
 			edgeDirection[row][col] = newAngle;							// Store the approximate edge direction of each pixel in one array
 		}
 	}
-
+	
 	// Trace along all the edges in the image
 	for (row = 1; row < height - 1; row++) {
 		for (col = 1; col < width - 1; col++) {
@@ -170,7 +166,7 @@ void imagePro(double width, double height){
 			}
 		}
 	}
-
+	/*
 	// Suppress any pixels not changed by the edge tracing
 	for (row = 0; row < height; row++) {
 		for (col = 0; col < width; col++) {
@@ -207,7 +203,7 @@ void imagePro(double width, double height){
 		}
 	}
 
-	return ;
+	return ; */
 }
 
 
@@ -272,7 +268,6 @@ void findEdge(int rowShift, int colShift, int row, int col, int direction, doubl
 		else
 			edgeEnd = true;
 	}
-
 }
 
 void nonMaxima(int rowShift, int colShift, int row, int col, int direction, double width, double height){
@@ -310,7 +305,7 @@ void nonMaxima(int rowShift, int colShift, int row, int col, int direction, doub
 	else
 		edgeEnd = true;
 
-	//Find non-maximum parallel edges tracing up
+	// Find non-maximum parallel edges tracing up
 	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && ((int)impro_image.at<uchar>(newRow,newCol) == 255)) {
 		if (colShift < 0) {
 			if (newCol > 0)
