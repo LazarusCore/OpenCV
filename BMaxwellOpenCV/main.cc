@@ -16,6 +16,8 @@ void imagePro(double width, double height);																	//Sobel filter
 void findEdge(int rowShift, int colShift, int row, int col, int direction, double width, double height);	//Find the edge provvided by the Sobel
 void nonMaxima(int rowShift, int colShift, int row, int col, int direction, double width, double height);	//Remove nonMax edges
 
+//Macros for greyscale
+#define pixel(image ,y, x, step, channels) ( (uchar*) ((( image).data ) + (y) *(step) ) ) [( x)*(channels)]
 
 //Constants
 const char* FILE_NAME = "image1.jpg";
@@ -34,6 +36,8 @@ Mat grey_image;													// Mat file for Gray scale Operator
 Mat blur_image;													// Gaussian Blur result
 float thresLow = 0.4;											// Lower Threshold
 float thresHigh = 0.7;											// Upper Threshold
+int step = impro_image.step;
+int channels = impro_image.channels();
 
 
 
@@ -76,9 +80,9 @@ void edgeDet(Mat input, double width, double height, float sigma){
 	
 	imagePro(width, height);	//Sobel Function
 
-	//imwrite("../../BMaxwellOpenCV/impro_Image.jpg", impro_image);
-	//namedWindow("Canny Image", CV_WINDOW_NORMAL);
-	//imshow("Canny Image", impro_image);
+	imwrite("../../BMaxwellOpenCV/impro_Image.jpg", impro_image);
+	namedWindow("Canny Image", CV_WINDOW_NORMAL);
+	imshow("Canny Image", impro_image);
 
 	return ;
 
@@ -114,8 +118,8 @@ void imagePro(double width, double height){
 				for (xOffset = -1; xOffset <= 1; xOffset++) {
 					yTotal = row + yOffset;
 					xTotal = col; +xOffset;
-					gradX = gradX + ((int)blur_image.at<uchar>(yTotal, xTotal) * GxMask[yOffset + 1][xOffset + 1]);
-					gradY = gradY + ((int)blur_image.at<uchar>(yTotal, xTotal) * GyMask[yOffset + 1][xOffset + 1]);
+					gradX = gradX + (pixel(blur_image, yTotal, xTotal, step, channels) * GxMask[yOffset + 1][xOffset + 1]);
+					gradY = gradY + (pixel(blur_image, yTotal, xTotal, step, channels) * GyMask[yOffset + 1][xOffset + 1]);
 				}
 			}
 
@@ -157,16 +161,16 @@ void imagePro(double width, double height){
 					findEdge(1, -1, row, col, 135, width, height);
 					break;
 				default:
-					impro_image.at<uchar>(Point(row,col)) = 0;
+					pixel(impro_image, row, col, step, channels) = 0;
 					break;
 				}
 			}
 			else {
-				impro_image.at<uchar>(Point(row, col)) = 0;
+				pixel(impro_image, row, col, step, channels) = 0;
 			}
 		}
 	}
-	/*
+	
 	// Suppress any pixels not changed by the edge tracing
 	for (row = 0; row < height; row++) {
 		for (col = 0; col < width; col++) {
@@ -181,7 +185,7 @@ void imagePro(double width, double height){
 	for (row = 1; row < height - 1; row++) {
 		for (col = 1; col < width - 1; col++) {
 
-			if (impro_image.at<uchar>(row,col) == 255) {				// Check to see if current pixel is an edge
+			if (pixel(impro_image, row, col, step, channels) == 255) {				// Check to see if current pixel is an edge
 																		// Switch based on current pixel's edge direction
 				switch (edgeDirection[row][col]) {
 				case 0:
@@ -203,7 +207,7 @@ void imagePro(double width, double height){
 		}
 	}
 
-	return ; */
+	return ;
 }
 
 
@@ -212,6 +216,7 @@ void findEdge(int rowShift, int colShift, int row, int col, int direction, doubl
 	int newRow;
 	int newCol;
 	bool edgeEnd = false;
+
 
 	//Find the row and column values for the next possible pixel on the edge
 	if (colShift < 0) {
@@ -243,7 +248,7 @@ void findEdge(int rowShift, int colShift, int row, int col, int direction, doubl
 	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && (pixGradient[newRow][newCol] > thresLow)) {
 		
 		//Set the pixel to white
-		impro_image.at<uchar>(Point(row, col)) = 0;				//need to pass this back and forward somehow   //uncomment this line when error is solved
+		pixel(impro_image, row, col, step, channels) = 255;				//need to pass this back and forward somehow   //uncomment this line when error is solved
 
 		if (colShift < 0) {
 			if (newCol > 0)
@@ -306,7 +311,7 @@ void nonMaxima(int rowShift, int colShift, int row, int col, int direction, doub
 		edgeEnd = true;
 
 	// Find non-maximum parallel edges tracing up
-	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && ((int)impro_image.at<uchar>(newRow,newCol) == 255)) {
+	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && (pixel(impro_image, newRow, newCol, step, channels) == 255)) {
 		if (colShift < 0) {
 			if (newCol > 0)
 				newCol = newCol + colShift;
@@ -363,7 +368,7 @@ void nonMaxima(int rowShift, int colShift, int row, int col, int direction, doub
 	else
 		edgeEnd = true;
 
-	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && (impro_image.at<uchar>(newRow,newCol) == 255)) {
+	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && (pixel(impro_image, newRow, newCol, step, channels) == 255)) {
 		if (colShift < 0) {
 			if (newCol > 0)
 				newCol = newCol + colShift;
@@ -405,7 +410,7 @@ void nonMaxima(int rowShift, int colShift, int row, int col, int direction, doub
 		}
 	}
 	for (count = 0; count < pixelCount; count++) {
-		impro_image.at<uchar>(newRow, newCol) = 0;
+		pixel(impro_image, newRow, newCol, step, channels) = 0;
 	}
 
 	return ;
