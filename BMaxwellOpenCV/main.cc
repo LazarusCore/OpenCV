@@ -11,10 +11,10 @@
 using namespace cv;
 
 //Function prototypes
-void edgeDet(Mat input, double width, double height, float sigma);											//Canny style edge detection
-void imagePro(double width, double height);																	//Sobel filter
-void findEdge(int rowShift, int colShift, int row, int col, int direction, double width, double height);	//Find the edge provvided by the Sobel
-void nonMaxima(int rowShift, int colShift, int row, int col, int direction, double width, double height);	//Remove nonMax edges
+void edgeDet(Mat input, int width, int height, float sigma);											//Canny style edge detection
+void imagePro(int width, int height);																	//Sobel filter
+void findEdge(int rowShift, int colShift, int row, int col, int direction, int width, int height);	//Find the edge provvided by the Sobel
+void nonMaxima(int rowShift, int colShift, int row, int col, int direction, int width, int height);	//Remove nonMax edges
 
 //Macros for greyscale
 #define pixel(image ,y, x, step, channels) ( (uchar*) ((( image).data ) + (y) *(step) ) ) [( x)*(channels)]
@@ -23,7 +23,7 @@ void nonMaxima(int rowShift, int colShift, int row, int col, int direction, doub
 const char* FILE_NAME = "image1.jpg";
 
 //Globals
-double imageX, imageY;											// Image Resoltion
+int imageX, imageY;												// Image Resoltion
 float sigma = 1.0;												// Canny Filter Standard deviation
 int gradX;														// Sum of Sobel mask products values in the x direction
 int gradY;														// Sum of Sobel mask products values in the y direction
@@ -31,10 +31,10 @@ int GxMask[3][3] = { {-1,0,1}, {-2,0,2}, {-1,0,-1} };			// Sobel mask in the x d
 int GyMask[3][3] = { {1,2,1}, {0,0,0}, {-1,-2,-1} };			// Sobel mask in the y direction
 int edgeDirection[3072][1728];									// Stores the edge direction of each pixel
 double pixGradient[3072][1728];									// Stores the gradient strength of each pixel
-Mat impro_image(3072,1728,CV_8UC1);												// Mat file for Sobel Operator
-Mat grey_image;													// Mat file for Gray scale Operator
-Mat blur_image;													// Gaussian Blur result
-float thresLow = 0.4;											// Lower Threshold
+Mat impro_image(1728, 3072, CV_8UC1);							// Mat file for Sobel Operator
+Mat grey_image(1728, 3072, CV_8UC1);							// Mat file for Gray scale Operator
+Mat blur_image(1728, 3072, CV_8UC1);							// Gaussian Blur result
+float thresLow = 0.5;											// Lower Threshold
 float thresHigh = 0.7;											// Upper Threshold
 int step = impro_image.step;
 int channels = impro_image.channels();
@@ -67,7 +67,7 @@ int main(int argc, char* args[]) {
 	return 0;
 }
 
-void edgeDet(Mat input, double width, double height, float sigma){
+void edgeDet(Mat input, int width, int height, float sigma){
 
 	Mat kernel = (Mat_<double>(5, 5) << 1, 4, 6, 4, 1, 4, 16, 24, 16, 4, 6, 24, 36, 24, 6, 4, 16, 24, 16, 4, 1, 4, 6, 4, 1);	//Gaussian Kernel
 	kernel = kernel / 256;										//Normalised
@@ -88,7 +88,7 @@ void edgeDet(Mat input, double width, double height, float sigma){
 
 }
 
-void imagePro(double width, double height){
+void imagePro(int width, int height){
 
 	unsigned int row, col;
 	int xOffset = 0;
@@ -104,7 +104,7 @@ void imagePro(double width, double height){
 	//initialise edgeDirection to 0 in all cells
 	for (row = 0; row < height; row++) {
 		for (col = 0; col < width; col++) {
-			edgeDirection[row][col] = 0;
+			edgeDirection[col][row] = 0;
 		}
 	}
 
@@ -117,13 +117,13 @@ void imagePro(double width, double height){
 			for (yOffset = -1; yOffset <= 1; yOffset++) {
 				for (xOffset = -1; xOffset <= 1; xOffset++) {
 					yTotal = row + yOffset;
-					xTotal = col; +xOffset;
+					xTotal = col + xOffset;
 					gradX = gradX + (pixel(blur_image, yTotal, xTotal, step, channels) * GxMask[yOffset + 1][xOffset + 1]);
 					gradY = gradY + (pixel(blur_image, yTotal, xTotal, step, channels) * GyMask[yOffset + 1][xOffset + 1]);
 				}
 			}
 
-			pixGradient[row][col] = sqrt(pow(gradX, 2.0) + pow(gradY, 2.0));	// Calculate gradient strength
+			pixGradient[col][row] = sqrt(pow(gradX, 2.0) + pow(gradY, 2.0));	// Calculate gradient strength
 			origAngle = (atan2(gradX, gradY) / 3.14159) * 180.0;				// Calculate actual direction of edge
 
 			//Convert actual edge direction to approximate value
@@ -136,7 +136,7 @@ void imagePro(double width, double height){
 			if (((origAngle > 112.5) && (origAngle < 157.5)) || ((origAngle < -22.5) && (origAngle > -67.5)))
 				newAngle = 135;
 
-			edgeDirection[row][col] = newAngle;							// Store the approximate edge direction of each pixel in one array
+			edgeDirection[col][row] = newAngle;							// Store the approximate edge direction of each pixel in one array
 		}
 	}
 	
@@ -144,10 +144,10 @@ void imagePro(double width, double height){
 	for (row = 1; row < height - 1; row++) {
 		for (col = 1; col < width - 1; col++) {
 			edgeEnd = false;
-			if (pixGradient[row][col] > thresHigh) {					// Check to see if current pixel has a high enough gradient strength to be part of an edge
+			if (pixGradient[col][row] > thresHigh) {					// Check to see if current pixel has a high enough gradient strength to be part of an edge
 				
 				// Switch based on current pixel's edge direction
-				switch (edgeDirection[row][col]) {
+				switch (edgeDirection[col][row]) {
 				case 0:
 					findEdge(0, 1, row, col, 0, width, height);
 					break;
@@ -175,8 +175,8 @@ void imagePro(double width, double height){
 	for (row = 0; row < height; row++) {
 		for (col = 0; col < width; col++) {
 			// If a pixel's grayValue is not black or white make it black
-			if (((int)impro_image.at<uchar>(Point(row, col)) != 255) && ((int)impro_image.at<uchar>(Point(row, col)) != 0)) {
-				impro_image.at<uchar>(Point(row, col)) = 0;
+			if ((pixel(impro_image, row, col, step, channels) != 255) && (pixel(impro_image, row, col, step, channels) != 0)) {
+				pixel(impro_image, row, col, step, channels) = 0;
 			}
 		}
 	}
@@ -186,8 +186,8 @@ void imagePro(double width, double height){
 		for (col = 1; col < width - 1; col++) {
 
 			if (pixel(impro_image, row, col, step, channels) == 255) {				// Check to see if current pixel is an edge
-																		// Switch based on current pixel's edge direction
-				switch (edgeDirection[row][col]) {
+				// Switch based on current pixel's edge direction
+				switch (edgeDirection[col][row]) {
 				case 0:
 					nonMaxima(1, 0, row, col, 0, width, height);
 					break;
@@ -211,7 +211,7 @@ void imagePro(double width, double height){
 }
 
 
-void findEdge(int rowShift, int colShift, int row, int col, int direction, double width, double height) {
+void findEdge(int rowShift, int colShift, int row, int col, int direction, int width, int height) {
 
 	int newRow;
 	int newCol;
@@ -229,7 +229,7 @@ void findEdge(int rowShift, int colShift, int row, int col, int direction, doubl
 		newCol = col + colShift;
 	
 	else
-		edgeEnd = true;												// If the next pixel would be off image, don't do the while loop
+		edgeEnd = true;																// If the next pixel would be off image, don't do the while loop
 
 	if (rowShift < 0) {
 		if (row > 0)
@@ -245,10 +245,10 @@ void findEdge(int rowShift, int colShift, int row, int col, int direction, doubl
 		edgeEnd = true;
 
 	//Determine if edge directions and gradient strengths correspond
-	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && (pixGradient[newRow][newCol] > thresLow)) {
+	while ((edgeDirection[newCol][newRow] == direction) && !edgeEnd && (pixGradient[newCol][newRow] > thresLow)) {
 		
 		//Set the pixel to white
-		pixel(impro_image, row, col, step, channels) = 255;				//need to pass this back and forward somehow   //uncomment this line when error is solved
+		pixel(impro_image, row, col, step, channels) = 255;							//need to pass this back and forward somehow   //uncomment this line when error is solved
 
 		if (colShift < 0) {
 			if (newCol > 0)
@@ -275,16 +275,16 @@ void findEdge(int rowShift, int colShift, int row, int col, int direction, doubl
 	}
 }
 
-void nonMaxima(int rowShift, int colShift, int row, int col, int direction, double width, double height){
+void nonMaxima(int rowShift, int colShift, int row, int col, int direction, int width, int height){
 
 
 	int newRow = 0;
 	int newCol = 0;
 	bool edgeEnd = false;
-	float nonMax[1728][3];												// Temporarily stores gradients and positions of pixels in parallel edges
-	int pixelCount = 0;													// Stores the number of pixels in parallel edges
+	float nonMax[3072][3];													// Temporarily stores gradients and positions of pixels in parallel edges
+	int pixelCount = 0;																// Stores the number of pixels in parallel edges
 	int count;
-	int max[3];															// Maximum point in a wide edge
+	int max[3];																		// Maximum point in a wide edge
 
 
 	if (colShift < 0) {
@@ -297,7 +297,7 @@ void nonMaxima(int rowShift, int colShift, int row, int col, int direction, doub
 		newCol = col + colShift;
 	}
 	else
-		edgeEnd = true;													// If the next pixel would be off image, don't do the while loop
+		edgeEnd = true;																// If the next pixel would be off image, don't do the while loop
 	if (rowShift < 0) {
 		if (row > 0)
 			newRow = row + rowShift;
@@ -311,7 +311,7 @@ void nonMaxima(int rowShift, int colShift, int row, int col, int direction, doub
 		edgeEnd = true;
 
 	// Find non-maximum parallel edges tracing up
-	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && (pixel(impro_image, newRow, newCol, step, channels) == 255)) {
+	while ((edgeDirection[newCol][newRow] == direction) && !edgeEnd && (pixel(impro_image, newRow, newCol, step, channels) == 255)) {
 		if (colShift < 0) {
 			if (newCol > 0)
 				newCol = newCol + colShift;
@@ -368,7 +368,7 @@ void nonMaxima(int rowShift, int colShift, int row, int col, int direction, doub
 	else
 		edgeEnd = true;
 
-	while ((edgeDirection[newRow][newCol] == direction) && !edgeEnd && (pixel(impro_image, newRow, newCol, step, channels) == 255)) {
+	while ((edgeDirection[newCol][newRow] == direction) && !edgeEnd && (pixel(impro_image, newRow, newCol, step, channels) == 255)) {
 		if (colShift < 0) {
 			if (newCol > 0)
 				newCol = newCol + colShift;
